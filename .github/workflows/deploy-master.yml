@@ -20,12 +20,12 @@ jobs:
       - name: Create env file
         run: |
           cat << EOF > .env
-          POSTGRES_URL=${{ secrets.POSTGRES_URL }}
+          POSTGRES_URL=postgresql://***
           STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
           NODE_ENV=production
-          BASE_URL=${{ secrets.BASE_URL }}
-          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          BASE_URL=http://localhost:3000
+          AUTH_SECRET=***
           EOF
 
       - name: Install Docker
