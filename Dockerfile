@@ -50,4 +50,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # Start the application
-CMD ["pnpm", "start"] 
+CMD pnpm install && pnpm db:setup && pnpm db:seed && pnpm start
