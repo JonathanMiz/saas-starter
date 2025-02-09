@@ -24,8 +24,9 @@ RUN pnpm build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm and wget for health checks
+RUN apk add --no-cache wget && \
+    npm install -g pnpm
 
 # Create public directory
 RUN mkdir -p public
@@ -36,6 +37,7 @@ COPY --from=builder /app/pnpm-lock.yaml .
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts .
+COPY --from=builder /app/app ./app
 
 # Install production dependencies only
 RUN pnpm install --prod --frozen-lockfile
