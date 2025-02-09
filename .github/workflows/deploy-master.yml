@@ -1,0 +1,68 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    environment: production
+    timeout-minutes: 10
+    env:
+      ENVIRONMENT: 'production'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create env file
+        run: |
+          cat << EOF > .env
+          POSTGRES_URL=${{ secrets.POSTGRES_URL }}
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NODE_ENV=production
+          BASE_URL=${{ secrets.BASE_URL }}
+          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          EOF
+
+      - name: Install Docker
+        run: |
+          sudo yum update -y
+          sudo yum install -y docker
+          sudo service docker start
+          sudo usermod -aG docker ec2-user
+          docker --version
+
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          sudo mkdir -p /usr/local/lib/docker/cli-plugins/
+          sudo ln -sf /usr/local/bin/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+
+      - name: Clean up old containers and images
+        run: |
+          sudo docker compose -f docker-compose.yml down --remove-orphans
+          sudo docker system prune -f
+
+      - name: Build and Deploy
+        run: |
+          sudo docker compose -f docker-compose.yml build --no-cache
+          sudo docker compose -f docker-compose.yml up -d
+
+      - name: Debug Information
+        run: |
+          sudo docker compose ps
+          sudo docker compose logs
+          
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back..."
+          sudo docker compose -f docker-compose.yml down
+          if [ -d "backup" ]; then
+            sudo docker compose -f backup/docker-compose.yml up -d
+          fi
